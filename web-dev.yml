@@ -1,26 +1,75 @@
 server:
   port: 9002
+
 spring:
   application:
     name: myshop-web
-  zipkin:
-    base-url: http://localhost:9041
-    sender:
-      type: web
-  sleuth:
-    sampler:
-      probability: 1
+  boot:
+    admin:
+      client:
+        url: http://localhost:7779
+#  cloud:
+#    loadbalancer:
+#      # 负载均衡策略配置（可选值：random、round-robin）
+#      # random: 随机选择服务实例
+#      # round-robin: 轮询选择服务实例（默认）
+#      configurations: random  # 使用随机负载均衡策略
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,circuitbreakerevents,retries,retryevents
+  endpoint:
+    health:
+      show-details: always
+    circuitbreakers:
+      enabled: true
+    circuitbreakerevents:
+      enabled: true
+
 eureka:
   client:
-    register-with-eureka: true # 作为客户端需要注册到Eureka
-    fetch-registry: true  # 作为客户端需要从Eureka获取注册信息
-    service-url: # 客户端注册地址
-      defaultZone: http://localhost:8888/eureka
-## 修改Ribbon的负载均衡算法
-#myshop-user:
-#  ribbon:
-#    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
-#开启hystrix
+    service-url:
+      defaultZone: http://localhost:8888/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    registry-fetch-interval-seconds: 5  # 每5秒刷新一次服务列表
+  instance:
+    prefer-ip-address: true
+
 feign:
-  hystrix:
+  circuitbreaker:
     enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userService:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+  retry:
+    instances:
+      userService:
+        maxAttempts: 3
+        waitDuration: 1000
+
+# SpringDoc OpenAPI 配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.example.controller
